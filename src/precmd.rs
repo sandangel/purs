@@ -1,5 +1,5 @@
-use ansi_term::Colour::{Blue, Cyan, Green, Purple, Red};
-use ansi_term::{ANSIGenericString, ANSIStrings};
+use ansi_term::ANSIStrings;
+use ansi_term::Colour::{Blue, Cyan, Fixed, Green, Purple, Red, Yellow};
 use clap::{App, Arg, ArgMatches, SubCommand};
 use git2::{self, Repository, StatusOptions};
 use regex::Regex;
@@ -27,7 +27,7 @@ fn repo_status(r: &Repository, detailed: bool) -> Option<String> {
     if !detailed {
         if let Some((index_change, wt_change, conflicted, untracked)) = count_files_statuses(r) {
             if index_change != 0 || wt_change != 0 || conflicted != 0 || untracked != 0 {
-                out.push(Red.bold().paint(" *"));
+                out.push(Red.bold().paint("*"));
             }
         }
     } else {
@@ -48,19 +48,19 @@ fn repo_status(r: &Repository, detailed: bool) -> Option<String> {
                     out.push(Green.paint(format!(" ♦ {}", index_change)));
                 }
                 if conflicted > 0 {
-                    out.push(Red.paint(format!(" ✖ {}", conflicted)));
+                    out.push(Red.paint(format!(" x {}", conflicted)));
                 }
                 if wt_change > 0 {
-                    out.push(ANSIGenericString::from(format!(" ✚ {}", wt_change)));
+                    out.push(Yellow.paint(format!(" + {}", wt_change)));
                 }
                 if untracked > 0 {
-                    out.push(ANSIGenericString::from(" …"));
+                    out.push(Fixed(245).paint(" *"));
                 }
             }
         }
 
         if let Some(action) = get_action(r) {
-            out.push(Purple.paint(format!(" {}", action)));
+            out.push(Purple.paint(format!("{}", action)));
         }
     }
 
@@ -192,17 +192,25 @@ fn get_action(r: &Repository) -> Option<String> {
 }
 
 pub fn display(sub_matches: &ArgMatches) {
-    let my_path = env::current_dir().unwrap();
-    let display_path = Blue.paint(shorten_path(my_path.to_str().unwrap()));
+    let cur_path = env::current_dir().unwrap();
+    let cur_user = env::var("USER").unwrap();
 
-    let branch = match Repository::discover(my_path) {
+    let display_path = Blue.paint(shorten_path(cur_path.to_str().unwrap()));
+
+    let branch = match Repository::discover(cur_path) {
         Ok(repo) => repo_status(&repo, sub_matches.is_present("git-detailed")),
         Err(_e) => None,
     };
     let display_branch = Cyan.paint(branch.unwrap_or_default());
 
     println!("");
-    println!("{} {}", display_path, display_branch);
+    println!(
+        "{} {} {} {}",
+        Purple.paint("λ"),
+        Green.paint(cur_user),
+        display_path,
+        display_branch
+    );
 }
 
 pub fn cli_arguments<'a>() -> App<'a, 'a> {
